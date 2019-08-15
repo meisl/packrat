@@ -2,70 +2,95 @@
 	'use strict';
 	const undefined = void(0);
 
-	const { test, skip, todo } = QUnit;
+	const { module, test, skip, todo } = QUnit;
 	
-	QUnit.module('arith', hooks => {
-		test('global ratpack object', assert => {
-			assert.equal(typeof ratpack.parse, 'function');
+	const { parse, Result, Derivs } = ratpack;
+	
+	function assert_resultValue(assert, deriv, key, expectedValue, msg) {
+		if (!(deriv instanceof Derivs))
+			throw new TypeError('derivs is not a Derivs instance: ' + QUnit.dump.parse(deriv));
+		
+		const r = deriv[key],
+			isResult = r instanceof Result,
+			typeMsg = `property ${stringify(key)} should be instanceof Result`;
+		if (isResult) {
+			assert.ok(true, typeMsg);
+		} else {
+			assert.ok(false, typeMsg + `\nactually: ${QUnit.dump.parse(r)}`);
+		}
+		assert.strictEqual(r.value, expectedValue, `result[${stringify(key)}].value ${msg || ''}`);
+	}
+
+	
+	module('arith', hooks => {
+		
+		var expect = function (subject) {
+			const assert = expect.assert;
+			if (!assert) throw new Error('expect did not find assert');
+			return {
+				toHaveNull: function (key, msg) {
+					const mCustom   = msg ? ` (${msg})` : '';
+					const mStandard = `["${key}"] should be null`;
+					var mDescription = '';
+					if ((typeof subject === 'object') && (subject !== null)) {
+						const ctor = subject.constructor;
+						if (ctor && ctor.name) {
+							mDescription = `<a ${ctor.name}>`;
+						}
+					}
+					mDescription = mDescription || '{...}';
+					const v = subject[key];
+					const result = v === null;
+					msg = mDescription + mStandard + mCustom;
+					if (!result) {
+//						msg += `\nthe instance:\n${QUnit.dump.parse(subject)}`;
+					}
+					assert.strictEqual(v, null, msg);
+				}
+				
+			};
+		};
+		
+		hooks.beforeEach(assert => {
+			expect.assert = assert;
+		});
+
+		hooks.afterEach(assert => {
+			delete expect.assert;
 		});
 		
-		const { parse, Result, Derivs } = ratpack;
-		
-		function assert_nullResult(assert, deriv, key, msg) {
-			if (!(deriv instanceof Derivs))
-				throw new TypeError('derivs is not a Derivs instance: ' + QUnit.dump.parse(deriv));
-			assert.strictEqual(deriv[key], null,
-				`deriv[${stringify(key)}] should be null`
-				+ (msg ? ` (${msg})`: '')
-			);
-		}
-
-		function assert_resultValue(assert, deriv, key, expectedValue, msg) {
-			if (!(deriv instanceof Derivs))
-				throw new TypeError('derivs is not a Derivs instance: ' + QUnit.dump.parse(deriv));
-			
-			const r = deriv[key],
-				isResult = r instanceof Result,
-				typeMsg = `property ${stringify(key)} should be instanceof Result`;
-			if (isResult) {
-				assert.ok(true, typeMsg);
-			} else {
-				assert.ok(false, typeMsg + `\nactually: ${QUnit.dump.parse(r)}`);
-			}
-			assert.strictEqual(r.value, expectedValue, `result[${stringify(key)}].value ${msg || ''}`);
-		}
-		
-		QUnit.module('parse', hooks => {
+		module('parse', hooks => {
 			test('empty string', assert => {
 				const d = parse('');
-				assert.ok(d instanceof Derivs, 'returns a Derivs instance: ' + d);
-				assert_nullResult(assert, d, 'dvChar');
-				assert_nullResult(assert, d, 'dvDecimal');
-				assert_nullResult(assert, d, 'dvPrimary');
-				assert_nullResult(assert, d, 'dvAdditive');
+				assert.ok(d instanceof Derivs, 'parse returns a Derivs instance: ' + d);
+
+				expect(d).toHaveNull('dvChar');
+				expect(d).toHaveNull('dvDecimal');
+				expect(d).toHaveNull('dvPrimary');
+				expect(d).toHaveNull('dvAdditive');
 			});
 
-			QUnit.module('non-decimal digit characters', () => {
+			module('non-decimal digit characters', () => {
 				' ()+-*/abcd'.split('').forEach(
 					s => test(`"${s}"`, assert => {
 						const d = parse(s);
-						assert.ok(d instanceof Derivs, 'returns a Derivs instance: ' + d);
+						assert.ok(d instanceof Derivs, 'parse returns a Derivs instance: ' + d);
 						
 						const doAssert = assert_resultValue.bind(null, assert, d);
 						doAssert('dvChar',      s, 'should have consumed first char');
 						
-						assert_nullResult(assert, d, 'dvDecimal');
-						assert_nullResult(assert, d, 'dvPrimary');
-						assert_nullResult(assert, d, 'dvAdditive');
+						expect(d).toHaveNull('dvDecimal');
+						expect(d).toHaveNull('dvPrimary');
+						expect(d).toHaveNull('dvAdditive');
 					})
 				);
 			}); // end module "non-decimal digit characters"
 
-			QUnit.module('single decimal digit', () => {
+			module('single decimal digit', () => {
 				'0123456789'.split('').forEach(
 					s => test(`"${s}"`, assert => {
 						const d = parse(s);
-						assert.ok(d instanceof Derivs, 'returns a Derivs instance: ' + d);
+						assert.ok(d instanceof Derivs, 'parse returns a Derivs instance: ' + d);
 						
 						const doAssert = assert_resultValue.bind(null, assert, d);
 						doAssert('dvChar',      s, 'should have consumed first char');
@@ -76,7 +101,7 @@
 				);
 			}); // end module "single decimal digit"
 
-			QUnit.module('two decimal digits', () => {
+			module('two decimal digits', () => {
 				['00', '01', '02', '11', '23', '37', '42'].forEach(
 					s => test(`"${s}"`, assert => {
 						const d = parse(s);
@@ -91,7 +116,7 @@
 				);
 			}); // end module "two decimal digits"
 
-			QUnit.module('valid expressions without parens', () => {
+			module('valid expressions without parens', () => {
 				test('"1+1"', assert => {
 					const s = "1+1";
 					const d = parse(s);
@@ -116,7 +141,7 @@
 				});
 			}); // end module "valid expressions without parens"
 
-			QUnit.module('valid expressions with parens', () => {
+			module('valid expressions with parens', () => {
 				test('"(1+1)"', assert => {
 					const s = "(1+1)";
 					const d = parse(s);
@@ -124,7 +149,7 @@
 					
 					const doAssert = assert_resultValue.bind(null, assert, d);
 					doAssert('dvChar',      s[0], 'should have consumed first char');
-					assert_nullResult(assert, d, 'dvDecimal', 'should not succeed at opening paren');
+					expect(d).toHaveNull('dvDecimal', 'should not succeed at opening paren');
 					doAssert('dvPrimary',  2, 'should consume outermost (and leftmost) parens');
 					doAssert('dvAdditive', 2);
 				});
@@ -135,7 +160,7 @@
 					
 					const doAssert = assert_resultValue.bind(null, assert, d);
 					doAssert('dvChar',      s[0], 'should have consumed first char');
-					assert_nullResult(assert, d, 'dvDecimal', 'should not succeed at opening paren');
+					expect(d).toHaveNull('dvDecimal', 'should not succeed at opening paren');
 					doAssert('dvPrimary',  1, 'should consume outermost (and leftmost) parens');
 					doAssert('dvAdditive', 3);
 				});

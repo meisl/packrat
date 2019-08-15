@@ -4,7 +4,7 @@
 
 	const { module, test, skip, todo } = QUnit;
 	
-	const { parse, Result, Derivs } = ratpack;
+	const { parse, Result, Derivs } = packrat;
 	
 	function assert_resultValue(assert, deriv, key, expectedValue, msg) {
 		if (!(deriv instanceof Derivs))

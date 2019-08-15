@@ -141,7 +141,7 @@
 		return NoParse;
 	};
 	
-	return global.ratpack = {
+	return global.packrat = {
 		Derivs,
 		Result,
 		parse

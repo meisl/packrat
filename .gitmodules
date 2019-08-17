@@ -1,0 +1,3 @@
+[submodule "lib/qunit-check"]
+	path = lib/qunit-check
+	url = git@github.com:meisl/qunit-check.git
